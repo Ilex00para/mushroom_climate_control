@@ -1,8 +1,54 @@
-from machine import Pin, SoftI2C
+from machine import UART, Pin, SoftI2C
 from time import sleep
 from micropython import const
 
-humidifierPin = Pin(5, Pin.OUT)
+
+class WioE5:
+    def __init__(self,baudrate=9600, tx=43, rx=44):
+        APPKEY= const('F20A322E41822E47F6C61BAF29666158')
+        self.uart = UART(2, baudrate=baudrate, tx=tx, rx=rx)
+        # Configure the Wio-E5 for LoRa Communication
+        print("Configuring Wio-E5...")
+        self.send_at_command("AT")
+        #uses the send command to get the EUI - Extended Unique Identifiers 
+        self.DevEui = self.send_at_command("AT+ID=DevEui").split(',')[1] #Device EUI
+        self.AppEui = self.send_at_command("AT+ID=AppEui").split(',')[1] #Application EUI unique identifier for an application or group of devices within a LoRaWAN network
+        self.send_at_command(f"AT+KEY=APPKEY,{APPKEY}")  # Application session key
+        self.send_at_command("AT+DR=EU868")# Set Data Rate (region-specific)
+        self.send_at_command("AT+CH=NUM,0-2")
+        self.send_at_command("AT+MODE=LWOTAA")  
+        #send_at_command("AT+FREQ=868100000")    # Set frequency (868 MHz for EU)
+        sleep(1)
+        self.join_network()
+        
+
+    def send_at_command(self,command, delay=0.5):
+        """
+        Sends an AT command to the Wio-E5 and reads the response.
+        """
+        self.uart.write(command + '\r\n')  # Send the AT command
+        sleep(delay)  # Wait for response
+        if self.uart.any():  # Check if data is available
+            response = self.uart.read().decode('utf-8')  # Read and decode the response
+            print(f"Response: {response}")
+            return response
+        else:
+            print("No response received")
+            return ""
+
+    def join_network(self):
+        response = '+JOIN: Join failed'
+        tries = 0
+        while tries < 3 and '+JOIN: Join failed' in response:
+            tries += 1
+            self.uart.write('AT+JOIN'+ '\r\n')  # Send the AT command
+            sleep(10)  # Wait for response
+        
+            if self.uart.any():  # Check if data is available
+                response = self.uart.read().decode('utf-8')  # Read and decode the response
+                print(f"Response: {response}")
+            else:
+                print("No response received")
 
 class SCD4_sensor:
     # Class variables
@@ -74,7 +120,7 @@ class SCD4_sensor:
 
     def _read_reply(self, buff, num):
         self.i2c.readfrom_into(self.address, buff, num)
-        self._check_buffer_crc(self._buffer[0:num])
+        self._check_buffer_crc(buff[0:num])
 
     def _check_buffer_crc(self, buf):
         for i in range(0, len(buf), 3):
@@ -97,16 +143,18 @@ class SCD4_sensor:
         return crc & 0xFF  # return the bottom 8 bits
 
 
-
 if __name__ == "__main__":
-    scd4 = SCD4_sensor(sda=4,scl=11)
+    scd4 = SCD4_sensor(scl=5,sda=6)
+    relais_one = Pin(7, Pin.OUT)
+    wio_5 = WioE5()
+
 
     while True:
-        if scd4.data_ready:
-            scd4._read_data()
-            if scd4._relative_humidity < 80.0:
-              humidifierPin.value(1)
-              sleep(2)
-              humidifierPin.value(0)
-            
-        sleep(30)
+       if scd4.data_ready:
+         scd4._read_data()
+         relais_one.value(not relais_one.value())
+         print(scd4._relative_humidity, scd4._temperature, scd4._co2)
+         wio_5.send_at_command("AT+MSG=\"Hello LoRa\"")  # Send a message
+         sleep(30)
+
+
