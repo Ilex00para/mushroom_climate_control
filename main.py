@@ -145,7 +145,7 @@ class SCD4_sensor:
 
 if __name__ == "__main__":
     scd4 = SCD4_sensor(scl=5,sda=6)
-    relais_one = Pin(7, Pin.OUT)
+    relais_one = Pin(8, Pin.OUT)
     wio_5 = WioE5()
 
 
@@ -153,8 +153,7 @@ if __name__ == "__main__":
        if scd4.data_ready:
          scd4._read_data()
          relais_one.value(not relais_one.value())
-         print(scd4._relative_humidity, scd4._temperature, scd4._co2)
-         wio_5.send_at_command("AT+MSG=\"Hello LoRa\"")  # Send a message
+         wio_5.send_at_command(f"AT+MSG=\"{scd4._temperature, scd4._relative_humidity,scd4._co2}\"")  # Send a message
          sleep(30)
 
 
