@@ -1,12 +1,8 @@
 import requests
+import re
 import base64
 import json
 import datetime
-
-type = 'uplink_message'
-API_KEY = "NNSXS.MLGVF5QOHIKWE6CM4CVTCINXIN5FYSYVBJWIRZQ.HGQBA3MLVVOX6XLWVQI26PSQX4TII5HT7NLP3YJZUIZTIDAEAMMA"
-url = f'https://eu1.cloud.thethings.network/api/v3/as/applications/first-application-one/packages/storage/{type}'
-headers =   {'Authorization' : f'Bearer {API_KEY}', 'Content-Type': 'text/event-stream', 'Accept': 'text/event-stream'}
 
 class Timestamp:
     '''Class to generate the timestamp for API call'''
@@ -17,32 +13,50 @@ class Timestamp:
     def __str__(self):
         return self.timestamp
 
-#only messages after 5 minutes ago !!! can be adapted to any time
-params = {"after": str(Timestamp(1)), "limit": 1}
+class API_caller:
+    """Class to interact with the API of 'The Things Network'. 
+    Extraction of data from uplink messages of the last 'minutes_back' minutes."""
+    def __init__(self, API_KEY, url='https://eu1.cloud.thethings.network/api/v3/as/applications/first-application-one/packages/storage/'):
+        self.API_KEY = API_KEY
+        self.url = url
+        self.headers = {'Authorization' : f'Bearer {API_KEY}', 'Content-Type': 'text/event-stream', 'Accept': 'text/event-stream'}
+        self.params = {"after": None} #by this the number of uplink messages is limited otherwise it will return all the uplink messages of the last 24h 
 
-r = requests.get(url, headers=headers, params=params)
+    def extract_data(self, measurement, minutes_back=1):
+        if self.params["after"] != str(Timestamp(minutes_back)):
+            self.params = {"after": str(Timestamp(minutes_back))} 
+        try:
+            ID_compartment = measurement['result']['end_device_ids']['device_id'][-1]
+            measurement_time = measurement['result']['received_at']
+            avg_temperature, avg_relative_humidity, avg_co2 = base64.b64decode(measurement['result']['uplink_message']['frm_payload']).decode('utf-8').strip('( )').split(',')
+            return {'ID_compartment': ID_compartment, 
+                    'measurement_time': measurement_time, 
+                    'avg_temperature': float(avg_temperature), 
+                    'avg_relative_humidity': float(avg_relative_humidity), 
+                    'avg_co2': float(avg_co2)}
+        except KeyError as e:
+            print(f"KeyError: Missing key in measurement: {e}")
 
-# Check HTTP status before calling .json()
-if r.status_code != 200:
-    raise RuntimeError(f"The status code is not 200. \nSTATUS CODE: {r.status_code} \nTEXT: {r.text}")
-else:
-    try:
-        # Parse the response JSON
-        response_data = r.json()
-
-        # Extract the payload
-        if 'result' in response_data and 'uplink_message' in response_data['result']:
-            payload = base64.b64decode(response_data['result']['uplink_message']['frm_payload'])
-            print(payload)
-        else:
-            print("No uplink_message or result found in the response.")
+    def get_data(self):
+        r = requests.get(self.url+'uplink_message', headers=self.headers, params=self.params)
     
-    except KeyError as e:
-        print(f"KeyError: Missing key in response: {e}")
-    
-    except Exception as e:
-        # Handle any other exceptions
-        if 'error' in response_data:
-            print(f"\nAn error has occurred: {response_data['error']['message']}")
+        # Check HTTP status before calling .json()
+        if r.status_code != 200:
+            raise RuntimeError(f"The status code is not 200. \nSTATUS CODE: {r.status_code} \nTEXT: {r.text}")
         else:
-            raise RuntimeError("An unexpected problem occurred") from e
+            try:
+                measurements = re.findall(r'{.*}}}}',r.text)
+                for i, measurement in enumerate(measurements):
+                    measurements[i] = self.extract_data(json.loads(measurement))
+                return measurements
+            except Exception as e:
+                print(f"Error: {e}")
+                return None
+            
+                
+if __name__ == '__main__':
+    API_KEY = "NNSXS.MLGVF5QOHIKWE6CM4CVTCINXIN5FYSYVBJWIRZQ.HGQBA3MLVVOX6XLWVQI26PSQX4TII5HT7NLP3YJZUIZTIDAEAMMA"
+              
+    api_caller = API_caller(API_KEY)
+    climate_measurements = api_caller.get_data()
+    print(climate_measurements)
