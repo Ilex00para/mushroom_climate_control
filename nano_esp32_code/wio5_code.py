@@ -55,5 +55,5 @@ wio_5 = WioE5()
 # Send Data via LoRa
 while True:
     print("Sending LoRa message...")
-    wio_5.send_at_command("AT+MSG=\"Hello LoRa\"")  # Send a message
+    wio_5.send_at_command("AT+MSG=\"Hello\"")  # Send a message
     sleep(20)  # Wait before sending the next message
