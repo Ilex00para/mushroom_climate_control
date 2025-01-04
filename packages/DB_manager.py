@@ -11,17 +11,19 @@ class DB_manager():
 
     def __init__(self, config):
         self.config = config #cinfiguration dictionary
-        self.cnx = self.connect_to_mysql(self.config, attempts=3) #connection object
+        
 
         self.logger = logging.getLogger(__name__)
         self.formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         self.handler = logging.StreamHandler()
-        self.file_handler = logging.FileHandler("management_bot/cpy-errors.log")
+        self.file_handler = logging.FileHandler("mushroom_climate_control/cpy-errors.log")
         self.logger.setLevel(logging.INFO)
         self.handler.setFormatter(self.formatter)
         self.logger.addHandler(self.handler)
         self.file_handler.setFormatter(self.formatter)
         self.logger.addHandler(self.file_handler)
+
+        self.cnx = self.connect_to_mysql(self.config, attempts=3) #connection object
         
         #Commands
         self.add_climate_measurement = "INSERT INTO climate_data \
@@ -46,12 +48,12 @@ class DB_manager():
                     print("Database does not exist")
                 else:
                     print(err)
-                self.logger.info(
+                    self.logger.info(
                     "Connection failed: %s. Retrying (%d/%d)...",
                     err,
                     attempt,
                     attempts-1,
-                )
+                    )
                 # progressive reconnect delay
                 time.sleep(delay ** attempt)
                 attempt += 1
@@ -59,6 +61,8 @@ class DB_manager():
         return None 
 
     def check_last_entries(self):
+        '''Checks if the just received climate data contain timestanmps whoch are already in the database.
+        Has to interact with the '''
         NotImplementedError           
 
     def writing_to_db(self, data: dict, verbose=False):

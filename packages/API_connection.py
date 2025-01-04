@@ -3,6 +3,7 @@ import re
 import base64
 import json
 import datetime
+from typing import list
 
 class Timestamp:
     '''Class to generate the timestamp for API call'''
@@ -17,7 +18,7 @@ class Timestamp:
 class API_connection:
     """Class to interact with the API of 'The Things Network'. 
     Extraction of data from uplink messages of the last 'minutes_back' minutes."""
-    def __init__(self, API_KEY, url='https://eu1.cloud.thethings.network/api/v3/as/applications/first-application-one/packages/storage/'):
+    def __init__(self, API_KEY, url='https://eu1.cloud.thethings.network/api/v3/as/applications/first-application-one/packages/storage/') -> None:
         self.API_KEY = API_KEY
         self.url = url
         self.headers = {'Authorization' : f'Bearer {API_KEY}', 'Content-Type': 'text/event-stream', 'Accept': 'text/event-stream'}
@@ -40,7 +41,7 @@ class API_connection:
             print(e)
         return None
 
-    def get_data(self, minutes_back=1):
+    def get_data(self, minutes_back=1) -> list[dict]:
 
         self.params["after"] = str(Timestamp(minutes_back))
         
@@ -51,9 +52,9 @@ class API_connection:
             raise RuntimeError(f"Failed to fetch data from API.\nStatus Code: {r.status_code}\nURL: {r.url}\nResponse: {r.text}")
         else:
             try:
-                measurements = re.findall(r'{.*}}}}',r.text)
-                for i, measurement in enumerate(measurements):
-                    measurements[i] = self.extract_data(json.loads(measurement))
+                measurements = re.findall(r'{.*}}}}',r.text) #looks for specific pattern in the things network
+                for i, measurement in enumerate(measurements): 
+                    measurements[i] = self.extract_data(json.loads(measurement)) #replaces the real values with processesed climate values
                 return measurements
             except Exception as e:
                 print(f"Error: {e}")
