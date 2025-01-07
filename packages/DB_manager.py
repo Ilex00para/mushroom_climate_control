@@ -2,6 +2,7 @@ import mysql.connector
 from mysql.connector import errorcode
 import logging
 import time
+from typing import List
 
 
 class DB_manager():
@@ -60,19 +61,41 @@ class DB_manager():
 
         return None 
 
-    def check_last_entries(self):
-        '''Checks if the just received climate data contain timestanmps whoch are already in the database.
-        Has to interact with the '''
-        NotImplementedError           
+    def check_entry(self, table: str, features: List = None, condition: str =None) -> List[tuple]:
+        '''Checks entries in the DB
+        args:   
+            table: str - name of the table in the DB
+            features: List - list of features to be checked/retrieved
+            condition: str - any condition to be met
+        returns:
+            query: list - list of tuples with the query results
+        '''
+        features = '*' if features is None else ', '.join(features)
+        conditions = '' if condition is None else f'WHERE {condition}'
+        command = f"SELECT {features} FROM {table} {conditions};"
+        print(command)
+        with self.cnx.cursor() as cursor:
+            cursor.execute(command)
+            query = cursor.fetchall()
+        return query
 
-    def writing_to_db(self, data: dict, verbose=False):
+    def writing_to_db(self, data: dict, verbose: bool = False) -> None:
+        """Writes data to the DB using the self.add_climate_measurement command
+        args:
+            data: dict - dictionary with the data to be written
+            verbose: bool - if True prints the data written
+        """
         if self.cnx and self.cnx.is_connected():
             #creates the cursor to interact with the DB
             with self.cnx.cursor() as cursor:
-                
-                cursor.execute(operation=self.add_climate_measurement,params=data)
-                self.cnx.commit()
-            if verbose:
-                print(f'Data were inserted into the Database.\n{data}')
+                try:
+                    cursor.execute(operation=self.add_climate_measurement,params=data)
+                    if verbose:
+                        print(f'Data were inserted into the Database.\n{data}')
+                    self.cnx.commit()
+                except mysql.connector.IntegrityError as err:
+                    print("Error: {}".format(err))
+                    query = self.check_entry('climate_compartments', ['ID_compartment'], f'ID_compartment = {data["ID_compartment"]}')
+                    print(query)
         else:
             print('Not connected script closed.')

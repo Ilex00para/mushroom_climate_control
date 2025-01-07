@@ -25,8 +25,13 @@ if __name__ == '__main__':
               
     api_connection = API_connection(API_KEY) #creates the connection to the API
     db_manager = DB_manager(config) #creates the manager (cursor) for interacting with the DB
-    climate_measurements = api_connection.get_data() #reads specific data (see mushroom_climate_control/packages/API_connection.py) 
+    climate_measurements = api_connection.get_data(minutes_back=5) #reads specific data (see mushroom_climate_control/packages/API_connection.py) 
+    print(climate_measurements)
+    """"Problem with the after parameter, not sending the most recent data"""
     t = api_connection.params['after'] #timestamp of the API call (when was it called)
+    data = db_manager.check_entry('climate_data', condition=f'measurement_time >= "{t}"') #checks if the data is already in the DB
+    print(data)
+    """Can be improved by using multiple"""
     for measurement in climate_measurements:
         db_manager.writing_to_db(measurement, verbose=True) #writes for each climate timestamp the data to the db
         

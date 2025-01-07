@@ -3,7 +3,7 @@ import re
 import base64
 import json
 import datetime
-from typing import list
+from typing import List, Dict
 
 class Timestamp:
     '''Class to generate the timestamp for API call'''
@@ -17,7 +17,8 @@ class Timestamp:
 
 class API_connection:
     """Class to interact with the API of 'The Things Network'. 
-    Extraction of data from uplink messages of the last 'minutes_back' minutes."""
+    Extraction of data from uplink messages of the last X minutes (can be adapted in the get_data method and is by default 1 min)."""
+
     def __init__(self, API_KEY, url='https://eu1.cloud.thethings.network/api/v3/as/applications/first-application-one/packages/storage/') -> None:
         self.API_KEY = API_KEY
         self.url = url
@@ -29,11 +30,12 @@ class API_connection:
             ID_compartment = measurement['result']['end_device_ids']['device_id'][-1]
             measurement_time = datetime.datetime.fromisoformat(measurement['result']['received_at'].rstrip('Z'))
             avg_temperature, avg_relative_humidity, avg_co2 = base64.b64decode(measurement['result']['uplink_message']['frm_payload']).decode('utf-8').strip('( )').split(',')
-            return {'ID_compartment': int(ID_compartment), 
-                    'measurement_time': measurement_time, 
-                    'avg_co2': round(float(avg_co2),2),
-                    'avg_temperature': round(float(avg_temperature),2), 
-                    'avg_relative_humidity': round(float(avg_relative_humidity),2)
+            return {
+                'ID_compartment': int(ID_compartment), 
+                'measurement_time': measurement_time, 
+                'avg_co2': round(float(avg_co2),2),
+                'avg_temperature': round(float(avg_temperature),2), 
+                'avg_relative_humidity': round(float(avg_relative_humidity),2)
                     }
         except KeyError as e:
             print(f"KeyError: Missing key in measurement: {e}")
@@ -41,7 +43,7 @@ class API_connection:
             print(e)
         return None
 
-    def get_data(self, minutes_back=1) -> list[dict]:
+    def get_data(self, minutes_back=1) -> List[Dict]:
 
         self.params["after"] = str(Timestamp(minutes_back))
         
