@@ -1,6 +1,8 @@
 from packages import API_connection, DB_manager
+from time import sleep
 import datetime
 import random
+import signal
 
 if __name__ == '__main__':
 
@@ -14,7 +16,7 @@ if __name__ == '__main__':
     
     'Remove as hardcode'
     API_KEY = "NNSXS.MLGVF5QOHIKWE6CM4CVTCINXIN5FYSYVBJWIRZQ.HGQBA3MLVVOX6XLWVQI26PSQX4TII5HT7NLP3YJZUIZTIDAEAMMA"
-    
+    keep_running = True
 
     # mock_up_climate_data = {'ID_compartment': 1, 
     #                         'measurement_time': datetime.datetime.now(),
@@ -22,15 +24,27 @@ if __name__ == '__main__':
     #                         'avg_temperature':random.uniform(0.0,30.0),
     #                         'avg_relative_humidity':random.uniform(0.0,100.0)
     #                         }
-
-              
     api_connection = API_connection(API_KEY) #creates the connection to the API
     db_manager = DB_manager(config) #creates the manager (cursor) for interacting with the DB
-    climate_measurements = api_connection.get_data(minutes_back=10) #reads specific data (see mushroom_climate_control/packages/API_connection.py) !!!!!!! Time is in UTC time!!!!!!! 
-    t = api_connection.params['after'] #timestamp of the API call (when was it called)
-    """Can be improved by using multiple"""
-    for measurement in climate_measurements:
-        db_manager.writing_to_db(measurement, verbose=True) #writes for each climate timestamp the data to the db
+
+
+    def signal_handler(signum, frame):
+        global keep_running
+        print("Signal received, shutting down...")
+        keep_running = False
+
+    signal.signal(signal.SIGINT, signal_handler)  # Handles Ctrl+C
+
+    while keep_running:
+        try:          
+            climate_measurements = api_connection.get_data(minutes_back=10) #reads specific data (see mushroom_climate_control/packages/API_connection.py) !!!!!!! Time is in UTC time!!!!!!! 
+            t = api_connection.params['after'] #timestamp of the API call (when was it called)
+            """Can be improved by using multiple"""
+            for measurement in climate_measurements:
+                db_manager.writing_to_db(measurement, verbose=True) #writes for each climate timestamp the data to the db
+            sleep(30)
+        except Exception as e:
+            print(e)
         
     
 
