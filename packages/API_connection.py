@@ -19,7 +19,7 @@ class API_connection:
     """Class to interact with the API of 'The Things Network'. 
     Extraction of data from uplink messages of the last X minutes (can be adapted in the get_data method and is by default 1 min)."""
 
-    def __init__(self, API_KEY, url='https://eu1.cloud.thethings.network/api/v3/as/applications/first-application-one/packages/storage/') -> None:
+    def __init__(self, API_KEY, url='https://mcc.com/webhooks/datain') -> None:
         self.API_KEY = API_KEY
         self.url = url
         self.headers = {'Authorization' : f'Bearer {API_KEY}', 'Content-Type': 'text/event-stream', 'Accept': 'text/event-stream'}
@@ -61,3 +61,9 @@ class API_connection:
             except Exception as e:
                 print(f"Error: {e}")
                 return None
+
+if __name__ == '__main__':
+    API_KEY = "NNSXS.MLGVF5QOHIKWE6CM4CVTCINXIN5FYSYVBJWIRZQ.HGQBA3MLVVOX6XLWVQI26PSQX4TII5HT7NLP3YJZUIZTIDAEAMMA"
+    api_connection = API_connection(API_KEY)
+    climate_measurements = api_connection.get_data(minutes_back=10) 
+    print(climate_measurements)

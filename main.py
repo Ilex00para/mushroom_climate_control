@@ -37,7 +37,8 @@ if __name__ == '__main__':
 
     while keep_running:
         try:          
-            climate_measurements = api_connection.get_data(minutes_back=10) #reads specific data (see mushroom_climate_control/packages/API_connection.py) !!!!!!! Time is in UTC time!!!!!!! 
+            climate_measurements = api_connection.get_data(minutes_back=10) #reads specific data (see mushroom_climate_control/packages/API_connection.py) 
+            #!!!!!!! Time is in UTC time!!!!!!! 
             t = api_connection.params['after'] #timestamp of the API call (when was it called)
             """Can be improved by using multiple"""
             for measurement in climate_measurements:
@@ -45,7 +46,3 @@ if __name__ == '__main__':
             sleep(30)
         except Exception as e:
             print(e)
-        
-    
-
-
